@@ -14,15 +14,26 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
+use core::panic;
+
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
+
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
-
 pub use context::TaskContext;
-
+/// exit syscall
+pub const SYSCALL_EXIT: usize = 93;
+/// write syscall
+pub const SYSCALL_WRITE: usize = 64;
+/// gettime syscall
+pub const SYSCALL_GETTIMEOFDAY: usize = 169;
+/// yield syscall
+pub const SYSCALL_YIELD: usize = 124;
+/// trace syscall
+pub const SYSCALL_TRACE: usize = 410;
 /// The task manager, where all the tasks are managed.
 ///
 /// Functions implemented on `TaskManager` deals with all task state transitions
@@ -54,6 +65,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            task_syscall_count: [0; 32],
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -72,6 +84,17 @@ lazy_static! {
 }
 
 impl TaskManager {
+    
+    /// updata syscall count for current task
+    fn update_syscall_count(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+
+        let array_id = get_array_id_by_syscall_id(syscall_id);
+        let count = inner.tasks[current].task_syscall_count[array_id];
+        inner.tasks[current].task_syscall_count[array_id] = count+1;
+        //print!("update task_id is {}, syscall_id is {}, array_id is {}, count is {}\n",current,syscall_id,array_id,inner.tasks[current].task_syscall_count[array_id]);
+    }
     /// Run the first task in task list.
     ///
     /// Generally, the first task in task list is an idle task (we call it zero process later).
@@ -158,6 +181,12 @@ fn mark_current_exited() {
     TASK_MANAGER.mark_current_exited();
 }
 
+
+/// Update yield syscall count for current task
+pub fn add_yield_syscall_count() {
+    TASK_MANAGER.update_syscall_count(SYSCALL_YIELD);
+}
+
 /// Suspend the current 'Running' task and run the next task in task list.
 pub fn suspend_current_and_run_next() {
     mark_current_suspended();
@@ -165,7 +194,54 @@ pub fn suspend_current_and_run_next() {
 }
 
 /// Exit the current 'Running' task and run the next task in task list.
-pub fn exit_current_and_run_next() {
+pub fn exit_current_and_run_next(id :usize) {
+    if id==1 {
+        TASK_MANAGER.update_syscall_count(SYSCALL_EXIT);
+    }
     mark_current_exited();
     run_next_task();
+}
+///update time syscall count for current task
+pub fn add_time_syscall_count() {
+    TASK_MANAGER.update_syscall_count(SYSCALL_GETTIMEOFDAY);
+}
+///update write syscall count for current task
+pub fn add_write_syscall_count() {
+    TASK_MANAGER.update_syscall_count(SYSCALL_WRITE);
+}
+///update trace syscall count for current task
+pub fn add_trace_syscall_count() {
+    TASK_MANAGER.update_syscall_count(SYSCALL_TRACE);
+}
+///get array id by syscall id
+pub fn get_array_id_by_syscall_id(syscall_id: usize) -> usize {
+    match syscall_id{
+        SYSCALL_EXIT=>{
+            1
+        }
+        SYSCALL_GETTIMEOFDAY=>{
+            2
+        }
+        SYSCALL_TRACE=>{
+            3
+        }
+        SYSCALL_WRITE=>{
+            4
+        }
+        SYSCALL_YIELD=>{
+            5
+        }
+        _=>{
+            panic!("Invalid syscall id!");
+        }
+    }
+}
+///get syscall times for current task
+pub fn get_syscall_times(syscall_id: usize) -> isize {
+    let inner = TASK_MANAGER.inner.exclusive_access();
+    let current = inner.current_task;
+    let current_task = inner.tasks[current];
+    let array_id = get_array_id_by_syscall_id(syscall_id);
+    print!("task_id is {}, syscall_id is {}, array_id is {}\n",current,syscall_id,array_id);
+    current_task.task_syscall_count[array_id] as isize
 }
