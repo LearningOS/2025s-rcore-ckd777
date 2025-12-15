@@ -27,6 +27,7 @@ pub fn sys_yield() -> isize {
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
+
     -1
 }
 
@@ -34,7 +35,31 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
 /// HINT: You might reimplement it with virtual memory management.
 pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
     trace!("kernel: sys_trace");
-    -1
+    match  _trace_request {
+        0 => {
+            // trace_read
+            
+
+            -1
+        }
+        1 => {
+            // trace_write
+            
+            
+            -1
+        }
+        2 => {
+            // trace_get_count
+            
+
+            -1
+        }
+        _ => {
+            trace!("kernel: sys_trace invalid trace_request {}", _trace_request);
+            -1
+        }
+    }
+    
 }
 
 // YOUR JOB: Implement mmap.

@@ -202,3 +202,17 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
 }
+
+/// Get app data by app id
+pub fn get_data_by_address(vpn: usize) -> &'static [u8] {
+    let mut inner = TASK_MANAGER.inner.exclusive_access();
+    let current_task = inner.current_task;
+    match inner.tasks[current_task].memory_set.translate(vpn.into())    {
+        Some(pte) => {
+            let ppn = pte.ppn();
+            let pa = ppn.page_number_to_address();
+            unsafe { core::slice::from_raw_parts(pa.as_ptr(), 4096) }
+        }
+        None => &[],
+    }
+}
