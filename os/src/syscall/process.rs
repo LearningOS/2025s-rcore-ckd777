@@ -59,7 +59,7 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
             return 0;
         }
         2=>{
-            print!("syscall times is {},id is {}\n",get_syscall_times(_id),_id);
+            //print!("syscall times is {},id is {}\n",get_syscall_times(_id),_id);
             return get_syscall_times(_id);
         }
         _=>{

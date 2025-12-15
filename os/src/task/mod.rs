@@ -242,6 +242,6 @@ pub fn get_syscall_times(syscall_id: usize) -> isize {
     let current = inner.current_task;
     let current_task = inner.tasks[current];
     let array_id = get_array_id_by_syscall_id(syscall_id);
-    print!("task_id is {}, syscall_id is {}, array_id is {}\n",current,syscall_id,array_id);
+    //print!("task_id is {}, syscall_id is {}, array_id is {}\n",current,syscall_id,array_id);
     current_task.task_syscall_count[array_id] as isize
 }
