@@ -1,11 +1,11 @@
 //! Types related to task management
 use super::TaskContext;
-use crate::config::TRAP_CONTEXT_BASE;
+use crate::config::{PAGE_SIZE, TRAP_CONTEXT_BASE};
 use crate::mm::{
     kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE,
 };
 use crate::trap::{trap_handler, TrapContext};
-
+use crate::mm::frame_free_size;
 /// The task control block (TCB) of a task.
 pub struct TaskControlBlock {
     /// Save task context
@@ -38,6 +38,21 @@ impl TaskControlBlock {
     /// get the user token
     pub fn get_user_token(&self) -> usize {
         self.memory_set.token()
+    }
+    ///add a mmap area to the memory set
+    pub fn mmap(&mut self, start: usize, len: usize, prot: u8) -> isize {
+        if self.memory_set.is_range_free(start.into(), (start+len).into()){
+            return -1;
+        }
+        if len/PAGE_SIZE>frame_free_size(){
+            return -1;
+        }
+        self.memory_set.insert_framed_area(
+            VirtAddr::from(start),
+            VirtAddr::from(start + len),
+            MapPermission::from_bits_truncate(prot),
+        );
+        0
     }
     /// Based on the elf info in program, build the contents of task in a new address space
     pub fn new(elf_data: &[u8], app_id: usize) -> Self {

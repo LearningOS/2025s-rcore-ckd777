@@ -42,6 +42,7 @@ trait FrameAllocator {
     fn new() -> Self;
     fn alloc(&mut self) -> Option<PhysPageNum>;
     fn dealloc(&mut self, ppn: PhysPageNum);
+    fn size(&self) -> usize;
 }
 /// an implementation for frame allocator
 pub struct StackFrameAllocator {
@@ -84,6 +85,9 @@ impl FrameAllocator for StackFrameAllocator {
         // recycle
         self.recycled.push(ppn);
     }
+    fn size(&self) -> usize {
+        self.end - self.current + self.recycled.len()
+    }
 }
 
 type FrameAllocatorImpl = StackFrameAllocator;
@@ -103,7 +107,10 @@ pub fn init_frame_allocator() {
         PhysAddr::from(MEMORY_END).floor(),
     );
 }
-
+///
+pub fn check_freepage_size()->usize{
+    FRAME_ALLOCATOR.exclusive_access().size()
+}
 /// Allocate a physical page frame in FrameTracker style
 pub fn frame_alloc() -> Option<FrameTracker> {
     FRAME_ALLOCATOR

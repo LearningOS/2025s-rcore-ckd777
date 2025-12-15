@@ -1,6 +1,7 @@
 //! Process management syscalls
-use crate::task::{change_program_brk, exit_current_and_run_next, suspend_current_and_run_next};
-
+use crate::task::{current_user_token,change_program_brk, exit_current_and_run_next, suspend_current_and_run_next,mmap};
+use crate::mm::{translated_byte_buffer};
+use crate::config::PAGE_SIZE;
 #[repr(C)]
 #[derive(Debug)]
 pub struct TimeVal {
@@ -27,8 +28,22 @@ pub fn sys_yield() -> isize {
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
-
-    -1
+    let us = crate::timer::get_time_us();
+    let buffers = translated_byte_buffer(current_user_token(), _ts as *const u8, core::mem::size_of::<TimeVal>());
+    let tv = TimeVal {
+        sec: us / 1_000_000,
+        usec: us % 1_000_000,
+    };
+    let src = &tv as *const _ as *const u8;
+    let mut offset = 0;
+    for buf in buffers {
+    let len = buf.len();
+    buf.copy_from_slice(unsafe {
+        core::slice::from_raw_parts(src.add(offset), len)
+    });
+    offset += len;
+    }
+    0
 }
 
 /// TODO: Finish sys_trace to pass testcases
@@ -65,7 +80,15 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
-    -1
+    if _start % PAGE_SIZE != 0 {
+        trace!("kernel: sys_mmap start address not aligned by page size");
+        return -1;
+    }
+    if _port& !0x7 != 0 || _port & 0x7 == 0 {
+        trace!("kernel: sys_mmap invalid prot {}", _port);
+        return -1;
+    }
+    mmap(_start, _len, _port as u8)
 }
 
 // YOUR JOB: Implement munmap.

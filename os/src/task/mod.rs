@@ -153,6 +153,18 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+    /// mmap
+    pub fn mmap(&self, start: usize, len: usize, prot: u8) -> isize {
+        let mut  inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].mmap(start, len, prot)
+    }
+}
+
+
+/// mmap
+pub fn mmap( start: usize, len: usize, prot: u8)->isize{
+    TASK_MANAGER.mmap(start,len,prot)
 }
 
 /// Run the first task in task list.
@@ -203,16 +215,16 @@ pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
 }
 
-/// Get app data by app id
-pub fn get_data_by_address(vpn: usize) -> &'static [u8] {
-    let mut inner = TASK_MANAGER.inner.exclusive_access();
-    let current_task = inner.current_task;
-    match inner.tasks[current_task].memory_set.translate(vpn.into())    {
-        Some(pte) => {
-            let ppn = pte.ppn();
-            let pa = ppn.page_number_to_address();
-            unsafe { core::slice::from_raw_parts(pa.as_ptr(), 4096) }
-        }
-        None => &[],
-    }
-}
+// /// Get app data by app id
+// pub fn get_data_by_address(vpn: usize) -> &'static [u8] {
+//     let mut inner = TASK_MANAGER.inner.exclusive_access();
+//     let current_task = inner.current_task;
+//     match inner.tasks[current_task].memory_set.translate(vpn.into())    {
+//         Some(pte) => {
+//             let ppn = pte.ppn();
+//             let pa = ppn.page_number_to_address();
+//             unsafe { core::slice::from_raw_parts(pa.as_ptr(), 4096) }
+//         }
+//         None => &[],
+//     }
+// }

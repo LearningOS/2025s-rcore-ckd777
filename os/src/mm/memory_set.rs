@@ -262,6 +262,19 @@ impl MemorySet {
             false
         }
     }
+    /// check if the range [start,end) is free
+    pub fn is_range_free(&self, start: VirtAddr, end: VirtAddr) -> bool{
+        for area in self.areas.iter(){
+            let l:VirtAddr=area.vpn_range.get_start().into();
+            let r:VirtAddr=area.vpn_range.get_end().into();
+            if start<=l&&end>l || start>=l&&end<=r || start<r&&end>=r{
+                return false;
+            }
+        }
+        true
+    }
+
+
 }
 /// map area structure, controls a contiguous piece of virtual memory
 pub struct MapArea {
